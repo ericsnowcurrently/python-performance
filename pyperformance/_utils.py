@@ -14,6 +14,8 @@ __all__ = [
     'parse_selections',
     'iter_clean_lines',
     'flatten_strings',
+    # classes
+    'as_namedtuple',
 ]
 
 
@@ -277,3 +279,61 @@ def _flatten_strings(values, coerce, split, seen_iterables):
                 yield value
         elif id(value) not in seen_iterables:
             yield from _flatten_strings(value, coerce, seen_iterables)
+
+
+#######################################
+# classes
+
+from collections import namedtuple
+
+
+def as_namedtuple(cls, *fields, inherit=True):
+    """Return a new namedtuple subclass that inherits from the given class.
+
+    This may be used as a class decorator factory.
+    """
+    if not isinstance(cls, type):
+        # It was used as a decoratyr factory.
+        fields = list(flatten_strings((cls, *fields), split=True))
+        def decorator(cls):
+            return _as_namedtuple(cls, fields, inherit)
+        return decorator
+    else:
+        fields = list(flatten_strings((cls, *fields), split=True))
+        return _as_namedtuple(cls, fields, inherit)
+
+
+def _as_namedtuple(cls, fields, inherit):
+    if not fields:
+        raise NotImplementedError
+    if not isinstance(cls, type):
+        raise TypeError(f'expected a class, got {cls!r}')
+    if type(cls) is not type:
+        raise NotImplementedError(cls)
+    if cls.__bases__ != (object,):
+        # Deal with namedtuple base classes.
+        ntbases = [b for b in cls.__bases__
+                   if issubclass(b, tuple) and hasattr(b, '_fields')]
+        #if len(ntbases) == 1:
+        #    base, = ntbases
+        #    if not inherit:
+        #        raise TypeError(f'{cls} has incompatible base {base}')
+        #    fields = (*base._fields, *fields)
+        #elif ntbases:
+        #    raise TypeError(f'{cls} can have at most 1 namedtuple base class, got {ntbases}')
+        if ntbases:
+            raise TypeError(f'{cls} must not have any namedtuple base classes, got {ntbases}')
+        # Deal with base classes that define __new__().
+        if cls.__new__ is not object.__new__ and cls.__new__ not in vars(cls):
+            # for now we assume no base classes handle super() corrctly
+            raise NotImplementedError(cls)
+
+    bases = (
+        cls,
+        # XXX Insert a NamedTupleFixes here?
+        namedtuple(cls.__name__, fields),
+    )
+    ns = {
+        '__slots__': (),
+    }
+    return type(cls.__name__, bases, ns)

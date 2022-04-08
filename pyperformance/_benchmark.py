@@ -7,7 +7,6 @@ __all__ = [
 ]
 
 
-from collections import namedtuple
 import os
 import os.path
 import sys
@@ -36,7 +35,9 @@ def parse_benchmark(entry, *, fail=True):
     return bench, metafile
 
 
-class BenchmarkSpec(namedtuple('BenchmarkSpec', 'name version origin')):
+@_utils.as_namedtuple('name version origin'):
+class BenchmarkSpec:
+
     __slots__ = ()
 
     @classmethod

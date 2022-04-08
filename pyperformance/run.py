@@ -1,20 +1,19 @@
-from collections import namedtuple
 import hashlib
 import sys
 import time
 import traceback
 
 import pyperformance
-from . import _utils, _python, _pythoninfo
+from . import _utils, _python, _pythoninfo, _venv
 from .venv import VenvForBenchmarks, REQUIREMENTS_FILE
-from . import _venv
 
 
 class BenchmarkException(Exception):
     pass
 
 
-class RunID(namedtuple('RunID', 'python compat bench timestamp')):
+@_utils.as_namedtuple('python compat bench timestamp')
+class RunID:
 
     def __new__(cls, python, compat, bench, timestamp):
         self = super().__new__(
