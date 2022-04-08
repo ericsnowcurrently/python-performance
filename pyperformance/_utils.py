@@ -7,7 +7,7 @@ __all__ = [
     # platform
     'MS_WINDOWS',
     'run_command',
-    # misc
+    # text
     'check_name',
     'parse_name_pattern',
     'parse_tag_pattern',
@@ -28,7 +28,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 
 
 @contextlib.contextmanager
@@ -164,6 +163,9 @@ def run_python(*args, python=sys.executable, **kwargs):
 #######################################
 # network utils
 
+import urllib.request
+
+
 def download(url, filename):
     response = urllib.request.urlopen(url)
     with response:
@@ -175,7 +177,7 @@ def download(url, filename):
 
 
 #######################################
-# misc utils
+# text utils
 
 def check_name(name, *, loose=False, allownumeric=False):
     if not name or not isinstance(name, str):
