@@ -13,6 +13,7 @@ __all__ = [
     'parse_tag_pattern',
     'parse_selections',
     'iter_clean_lines',
+    'flatten_strings',
 ]
 
 
@@ -242,3 +243,37 @@ def iter_clean_lines(filename):
             if not line:
                 continue
             yield line
+
+
+def flatten_strings(values, *, coerce=False, split=False):
+    """Yield all the strings in the possibly nested given values.
+
+    "values" may be:
+
+     * a string
+     * an iterable of strings (or of iterables of strings, etc.)
+    """
+    if split is True:
+        def split(value):
+            return value.replace(',', ' ').split()
+    elif split:
+        raise NotImplementedError(repr(split))
+    if isinstance(values, str):
+        values = split(values) if split else [values]
+        return iter(values)
+    seen = set()
+    return _flatten_strings(values, coerce, split, seen)
+
+
+def _flatten_strings(values, coerce, split, seen_iterables):
+    seen_iterables.add(id(values))
+    for value in values:
+        if isinstance(value, str):
+            if coerce:
+                value = str(value)
+            if split:
+                yield from split(value)
+            else:
+                yield value
+        elif id(value) not in seen_iterables:
+            yield from _flatten_strings(value, coerce, seen_iterables)
