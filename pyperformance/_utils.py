@@ -1,5 +1,12 @@
 
 __all__ = [
+    # text
+    'check_name',
+    'parse_name_pattern',
+    'parse_tag_pattern',
+    'parse_selections',
+    'iter_clean_lines',
+    'flatten_strings',
     # classes
     'as_namedtuple',
     # filesystem
@@ -9,14 +16,112 @@ __all__ = [
     # platform
     'MS_WINDOWS',
     'run_command',
-    # text
-    'check_name',
-    'parse_name_pattern',
-    'parse_tag_pattern',
-    'parse_selections',
-    'iter_clean_lines',
-    'flatten_strings',
 ]
+
+
+#######################################
+# text utils
+
+from collections import namedtuple
+
+
+def check_name(name, *, loose=False, allownumeric=False):
+    if not name or not isinstance(name, str):
+        raise ValueError(f'bad name {name!r}')
+    if allownumeric:
+        name = f'_{name}'
+    if not loose:
+        if name.startswith('-'):
+            raise ValueError(name)
+        if not name.replace('-', '_').isidentifier():
+            raise ValueError(name)
+
+
+def parse_name_pattern(text, *, fail=True):
+    name = text
+    # XXX Support globs and/or regexes?  (return a callable)
+    try:
+        check_name('_' + name)
+    except Exception:
+        if fail:
+            raise  # re-raise
+        return None
+    return name
+
+
+def parse_tag_pattern(text):
+    if not text.startswith('<'):
+        return None
+    if not text.endswith('>'):
+        return None
+    tag = text[1:-1]
+    # XXX Support globs and/or regexes?  (return a callable)
+    check_name(tag)
+    return tag
+
+
+def parse_selections(selections, parse_entry=None):
+    if isinstance(selections, str):
+        selections = selections.split(',')
+    if parse_entry is None:
+        parse_entry = (lambda o, e: (o, e, None, e))
+
+    for entry in selections:
+        entry = entry.strip()
+        if not entry:
+            continue
+
+        op = '+'
+        if entry.startswith('-'):
+            op = '-'
+            entry = entry[1:]
+
+        yield parse_entry(op, entry)
+
+
+def iter_clean_lines(filename):
+    with open(filename, encoding="utf-8") as reqsfile:
+        for line in reqsfile:
+            # strip comment
+            line = line.partition('#')[0]
+            line = line.rstrip()
+            if not line:
+                continue
+            yield line
+
+
+def flatten_strings(values, *, coerce=False, split=False):
+    """Yield all the strings in the possibly nested given values.
+
+    "values" may be:
+
+     * a string
+     * an iterable of strings (or of iterables of strings, etc.)
+    """
+    if split is True:
+        def split(value):
+            return value.replace(',', ' ').split()
+    elif split:
+        raise NotImplementedError(repr(split))
+    if isinstance(values, str):
+        values = split(values) if split else [values]
+        return iter(values)
+    seen = set()
+    return _flatten_strings(values, coerce, split, seen)
+
+
+def _flatten_strings(values, coerce, split, seen_iterables):
+    seen_iterables.add(id(values))
+    for value in values:
+        if isinstance(value, str):
+            if coerce:
+                value = str(value)
+            if split:
+                yield from split(value)
+            else:
+                yield value
+        elif id(value) not in seen_iterables:
+            yield from _flatten_strings(value, coerce, seen_iterables)
 
 
 #######################################
@@ -235,105 +340,3 @@ def download(url, filename):
     with open(filename, 'wb') as fp:
         fp.write(content)
         fp.flush()
-
-
-#######################################
-# text utils
-
-def check_name(name, *, loose=False, allownumeric=False):
-    if not name or not isinstance(name, str):
-        raise ValueError(f'bad name {name!r}')
-    if allownumeric:
-        name = f'_{name}'
-    if not loose:
-        if name.startswith('-'):
-            raise ValueError(name)
-        if not name.replace('-', '_').isidentifier():
-            raise ValueError(name)
-
-
-def parse_name_pattern(text, *, fail=True):
-    name = text
-    # XXX Support globs and/or regexes?  (return a callable)
-    try:
-        check_name('_' + name)
-    except Exception:
-        if fail:
-            raise  # re-raise
-        return None
-    return name
-
-
-def parse_tag_pattern(text):
-    if not text.startswith('<'):
-        return None
-    if not text.endswith('>'):
-        return None
-    tag = text[1:-1]
-    # XXX Support globs and/or regexes?  (return a callable)
-    check_name(tag)
-    return tag
-
-
-def parse_selections(selections, parse_entry=None):
-    if isinstance(selections, str):
-        selections = selections.split(',')
-    if parse_entry is None:
-        parse_entry = (lambda o, e: (o, e, None, e))
-
-    for entry in selections:
-        entry = entry.strip()
-        if not entry:
-            continue
-
-        op = '+'
-        if entry.startswith('-'):
-            op = '-'
-            entry = entry[1:]
-
-        yield parse_entry(op, entry)
-
-
-def iter_clean_lines(filename):
-    with open(filename, encoding="utf-8") as reqsfile:
-        for line in reqsfile:
-            # strip comment
-            line = line.partition('#')[0]
-            line = line.rstrip()
-            if not line:
-                continue
-            yield line
-
-
-def flatten_strings(values, *, coerce=False, split=False):
-    """Yield all the strings in the possibly nested given values.
-
-    "values" may be:
-
-     * a string
-     * an iterable of strings (or of iterables of strings, etc.)
-    """
-    if split is True:
-        def split(value):
-            return value.replace(',', ' ').split()
-    elif split:
-        raise NotImplementedError(repr(split))
-    if isinstance(values, str):
-        values = split(values) if split else [values]
-        return iter(values)
-    seen = set()
-    return _flatten_strings(values, coerce, split, seen)
-
-
-def _flatten_strings(values, coerce, split, seen_iterables):
-    seen_iterables.add(id(values))
-    for value in values:
-        if isinstance(value, str):
-            if coerce:
-                value = str(value)
-            if split:
-                yield from split(value)
-            else:
-                yield value
-        elif id(value) not in seen_iterables:
-            yield from _flatten_strings(value, coerce, seen_iterables)
