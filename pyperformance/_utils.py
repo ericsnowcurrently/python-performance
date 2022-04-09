@@ -9,6 +9,8 @@ __all__ = [
     'flatten_strings',
     # classes
     'as_namedtuple',
+    # CLI
+    'ParsedSelection',
     # filesystem
     'temporary_file',
     'check_file',
