@@ -11,7 +11,10 @@ def cmd_list(options, benchmarks):
     print("Total: %s benchmarks" % len(benchmarks))
 
 
-def cmd_list_groups(options, manifest):
+def cmd_list_groups(options):
+    from pyperformance import _manifest
+
+    manifest = _manifest.load_manifest(options.manifest)
     all_benchmarks = set(manifest.benchmarks)
 
     groups = sorted(manifest.groups - {'all', 'default'})

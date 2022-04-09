@@ -204,15 +204,11 @@ def parse_args():
     return cmd, ns, options, parser
 
 
-def _manifest_from_options(options):
-    from pyperformance import _manifest
-    return _manifest.load_manifest(options.manifest)
-
-
 def _benchmarks_from_options(options):
     if not getattr(options, 'benchmarks', None):
         return None
-    manifest = _manifest_from_options(options)
+    from pyperformance import _manifest
+    manifest = _manifest.load_manifest(options.manifest)
     return _select_benchmarks(options.benchmarks, manifest)
 
 
@@ -254,9 +250,6 @@ def _main(cmd, cmd_kwargs, options, parser):
     if 'benchmarks' in cmd_kwargs:
         benchmarks = _benchmarks_from_options(options)
         run_cmd(options, benchmarks)
-    elif 'manifest' in cmd_kwargs:
-        manifest = _manifest_from_options(options)
-        run_cmd(options, manifest)
     else:
         run_cmd(options)
 
