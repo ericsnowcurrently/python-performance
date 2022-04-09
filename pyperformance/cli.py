@@ -203,7 +203,7 @@ def parse_args():
                 parser.error('--benchmarks cannot be empty')
             options.benchmarks = None
 
-    return (parser, options)
+    return options, parser
 
 
 def _manifest_from_options(options):
@@ -245,16 +245,7 @@ def _select_benchmarks(raw, manifest):
     return selected
 
 
-def _main():
-    if not is_installed():
-        # Always require a local checkout to be installed.
-        print('ERROR: pyperformance should not be run without installing first')
-        if is_dev():
-            print('(consider using the dev.py script)')
-        sys.exit(1)
-
-    parser, options = parse_args()
-
+def _main(options, parser):
     if options.action == 'venv':
         from . import _pythoninfo, _venv
 
@@ -310,7 +301,16 @@ def _main():
 
 def main():
     try:
-        _main()
+        if not is_installed():
+            # Always require a local checkout to be installed.
+            print('ERROR: pyperformance should not be run without installing first')
+            if is_dev():
+                print('(consider using the dev.py script)')
+            sys.exit(1)
+
+        options, parser = parse_args()
+
+        _main(options, parser)
     except KeyboardInterrupt:
         print("Benchmark suite interrupted: exit!", flush=True)
         sys.exit(1)
