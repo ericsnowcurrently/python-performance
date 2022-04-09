@@ -35,7 +35,7 @@ def parse_benchmark(entry, *, fail=True):
     return bench, metafile
 
 
-@_utils.as_namedtuple('name version origin'):
+@_utils.as_namedtuple('name version origin')
 class BenchmarkSpec:
 
     __slots__ = ()
