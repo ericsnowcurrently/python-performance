@@ -41,25 +41,19 @@ def _legacy_benchmarks_check(selections, manifest):
 
 
 def _benchmarks_from_options(options):
-    from pyperformance import _manifest, _benchmark_selections
-    manifest = _manifest.load_manifest(options.manifest)
+    from pyperformance._benchmark_selections import RequestedBenchmarks
 
-    # Get the raw list of benchmarks.
-    selections = []
-    for rawentry in options.benchmarks or ():
-        sel = _utils.ParsedSelection.from_string_entry(rawentry)
-        sel = _benchmark_selections.parse_selection(sel.entry, op=sel.op)
-        selections.append(sel)
-    _legacy_benchmarks_check(selections, manifest)
+    class Benchmarks(RequestedBenchmarks):
 
-    # Get the selections.
-    selected = []
-    for bench in _benchmark_selections.iter_selections(manifest, selections):
-        if isinstance(bench, str):
-            logging.warning(f"no benchmark named {bench!r}")
-            continue
-        selected.append(bench)
-    return selected
+        def _parse_selections(self, manifest):
+            selections = super()._parse_selections(manifest)
+            _legacy_benchmarks_check(selections, manifest)
+            return selections
+
+        def _on_selection_has_no_matches(self, selstr):
+            logging.warning(f"no benchmark named {selstr!r}")
+
+    return Benchmarks(options.manifest, options.benchmarks)
 
 
 #######################################

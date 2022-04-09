@@ -1,11 +1,40 @@
-
 __all__ = [
+    'RequestedBenchmarks',
     'parse_selection',
     'iter_selections',
 ]
 
 
 from . import _utils, _benchmark
+
+
+@_utils.as_namedtuple('manifest selections')
+class RequestedBenchmarks:
+
+    def load(self):
+        try:
+            return self._loaded
+        except AttributeError:
+            from pyperformance._manifest import load_manifest
+            manifest = load_manifest(self.manifest)
+            parsed = self._parse_selections(manifest)
+            benchmarks = list(self._apply_selections(parsed, manifest))
+            self._loaded = (benchmarks, manifest)
+            return self._loaded
+
+    def _parse_selections(self, manifest):
+        for sel in _utils.ParsedSelection.iter_from_raw(self.selections):
+            yield parse_selection(sel.entry, op=sel.op)
+
+    def _apply_selections(self, parsed, manifest):
+        for bench in iter_selections(manifest, parsed):
+            if isinstance(bench, str):
+                self._on_selection_has_no_matches(bench)
+                continue
+            yield bench
+
+    def _on_selection_has_no_matches(self, selstr):
+        pass
 
 
 def parse_selection(selection, *, op=None):

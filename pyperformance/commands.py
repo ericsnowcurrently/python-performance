@@ -5,6 +5,7 @@ import sys
 
 def cmd_list(options, benchmarks):
     print("%r benchmarks:" % ",".join(options.benchmarks))
+    benchmarks, _ = benchmarks.load()
     for bench in sorted(benchmarks):
         print("- %s" % bench.name)
     print()
@@ -45,6 +46,7 @@ def cmd_venv_create(options, benchmarks):
     if _venv.venv_exists(root):
         sys.exit(f'ERROR: the virtual environment already exists at {root}')
 
+    benchmarks, _ = benchmarks.load()
     requirements = Requirements.from_benchmarks(benchmarks)
     venv = VenvForBenchmarks.ensure(
         root,
@@ -70,6 +72,7 @@ def cmd_venv_recreate(options, benchmarks):
         python = _pythoninfo.get_info(options.python)
         root = _venv.get_venv_root(python=python)
 
+    benchmarks, _ = benchmarks.load()
     requirements = Requirements.from_benchmarks(benchmarks)
     if _venv.venv_exists(root):
         venv_python = _venv.resolve_venv_python(root)
@@ -182,6 +185,7 @@ def cmd_run(options, benchmarks):
         print("ERROR: \"%s\" is not an absolute path" % executable)
         sys.exit(1)
 
+    benchmarks, _ = benchmarks.load()
     suite, errors = run_benchmarks(benchmarks, executable, options)
 
     if not suite:
