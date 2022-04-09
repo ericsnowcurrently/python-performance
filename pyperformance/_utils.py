@@ -60,25 +60,6 @@ def parse_tag_pattern(text):
     return tag
 
 
-def parse_selections(selections, parse_entry=None):
-    if isinstance(selections, str):
-        selections = selections.split(',')
-    if parse_entry is None:
-        parse_entry = (lambda o, e: (o, e, None, e))
-
-    for entry in selections:
-        entry = entry.strip()
-        if not entry:
-            continue
-
-        op = '+'
-        if entry.startswith('-'):
-            op = '-'
-            entry = entry[1:]
-
-        yield parse_entry(op, entry)
-
-
 def iter_clean_lines(filename):
     with open(filename, encoding="utf-8") as reqsfile:
         for line in reqsfile:
@@ -180,6 +161,47 @@ def _as_namedtuple(cls, fields, inherit):
         '__slots__': (),
     }
     return type(cls.__name__, bases, ns)
+
+
+#######################################
+# CLI utils
+
+@as_namedtuple('op entry kind parsed')
+class ParsedSelection:
+
+    @classmethod
+    def iter_from_raw(cls, raw):
+        if isinstance(raw, str):
+            raw = [raw]
+        for entries in raw:
+            entries = entries.split(',')
+            for entry in entries:
+                self = cls.from_string_entry(entry)
+                if self is None:
+                    continue
+                yield self
+
+    @classmethod
+    def from_string_entry(cls, entry):
+        op = '+'
+        entry = entry.strip()
+        if entry.startswith('-'):
+            op = '-'
+            entry = entry[1:]
+        if not entry:
+            return None
+        return cls._parse_entry(entry, op)
+
+    @classmethod
+    def _parse_entry(cls, entry, op):
+        kind = None
+        parsed = entry
+        return cls(op, entry, kind, parsed)
+
+    def __str__(self):
+        if self.op == '+':
+            return self.entry
+        return f'{self.op}{self.entry}'
 
 
 #######################################

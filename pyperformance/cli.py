@@ -200,34 +200,32 @@ def parse_args():
             if not allow_empty:
                 parser.error('--benchmarks cannot be empty')
             options.benchmarks = None
+        else:
+            parsed = _utils.ParsedSelection.iter_from_raw(
+                options.benchmarks.lower(),
+            )
+            options.benchmarks = [str(s) for s in parsed]
 
     return cmd, ns, options, parser
 
 
 def _benchmarks_from_options(options):
-    if not getattr(options, 'benchmarks', None):
-        return None
-    from pyperformance import _manifest
+    from pyperformance import _manifest, _benchmark_selections
     manifest = _manifest.load_manifest(options.manifest)
-    return _select_benchmarks(options.benchmarks, manifest)
-
-
-def _select_benchmarks(raw, manifest):
-    from pyperformance import _benchmark_selections
 
     # Get the raw list of benchmarks.
-    entries = raw.lower()
-    parse_entry = (lambda o, s: _benchmark_selections.parse_selection(s, op=o))
-    parsed = _utils.parse_selections(entries, parse_entry)
-    parsed_infos = list(parsed)
-
-    # Disallow negative groups.
-    for op, _, kind, parsed in parsed_infos:
-        if callable(parsed):
+    parsed_infos = []
+    for rawentry in options.benchmarks or ():
+        sel = _utils.ParsedSelection.from_string_entry(rawentry)
+        sel = _benchmark_selections.parse_selection(sel.entry, op=sel.op)
+        if callable(sel.parsed):
             continue
-        name = parsed.name if kind == 'benchmark' else parsed
-        if name in manifest.groups and op == '-':
-            raise ValueError(f'negative groups not supported: -{parsed.name}')
+        # Disallow negative groups.
+        name = sel.parsed.name if sel.kind == 'benchmark' else sel.parsed
+        if name in manifest.groups and sel.op == '-':
+            raise ValueError(f'negative groups not supported: -{sel.parsed.name}')
+        # Everything else is okay.
+        parsed_infos.append(sel)
 
     # Get the selections.
     selected = []

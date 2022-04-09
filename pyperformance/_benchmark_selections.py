@@ -36,7 +36,7 @@ def parse_selection(selection, *, op=None):
 #            parsed = _utils.parse_name_pattern(selection, fail=False)
             if not parsed:
                 raise ValueError(f'unsupported selection {selection!r}')
-    return op or '+', selection, kind, parsed
+    return _utils.ParsedSelection(op or '+', selection, kind, parsed)
 
 
 def iter_selections(manifest, selections, *, unique=True):

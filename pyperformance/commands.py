@@ -4,7 +4,7 @@ import sys
 
 
 def cmd_list(options, benchmarks):
-    print("%r benchmarks:" % options.benchmarks)
+    print("%r benchmarks:" % ",".join(options.benchmarks))
     for bench in sorted(benchmarks):
         print("- %s" % bench.name)
     print()
