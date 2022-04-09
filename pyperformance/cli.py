@@ -209,27 +209,33 @@ def parse_args():
     return cmd, ns, options, parser
 
 
+def _legacy_benchmarks_check(selections, manifest):
+    for sel in selections or ():
+        if not sel:
+            raise NotImplementedError(sel)
+        if callable(sel.parsed):
+            raise NotImplementedError(sel)
+        # Disallow negative groups.
+        name = sel.parsed.name if sel.kind == 'benchmark' else sel.parsed
+        if name in manifest.groups and sel.op == '-':
+            raise ValueError(f'negative groups not supported: -{sel.parsed.name}')
+
+
 def _benchmarks_from_options(options):
     from pyperformance import _manifest, _benchmark_selections
     manifest = _manifest.load_manifest(options.manifest)
 
     # Get the raw list of benchmarks.
-    parsed_infos = []
+    selections = []
     for rawentry in options.benchmarks or ():
         sel = _utils.ParsedSelection.from_string_entry(rawentry)
         sel = _benchmark_selections.parse_selection(sel.entry, op=sel.op)
-        if callable(sel.parsed):
-            continue
-        # Disallow negative groups.
-        name = sel.parsed.name if sel.kind == 'benchmark' else sel.parsed
-        if name in manifest.groups and sel.op == '-':
-            raise ValueError(f'negative groups not supported: -{sel.parsed.name}')
-        # Everything else is okay.
-        parsed_infos.append(sel)
+        selections.append(sel)
+    _legacy_benchmarks_check(selections, manifest)
 
     # Get the selections.
     selected = []
-    for bench in _benchmark_selections.iter_selections(manifest, parsed_infos):
+    for bench in _benchmark_selections.iter_selections(manifest, selections):
         if isinstance(bench, str):
             logging.warning(f"no benchmark named {bench!r}")
             continue
