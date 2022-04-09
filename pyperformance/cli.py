@@ -4,20 +4,7 @@ import os.path
 import sys
 
 from pyperformance import _utils, is_installed, is_dev
-from pyperformance.commands import (
-    cmd_list,
-    cmd_list_groups,
-    cmd_venv_create,
-    cmd_venv_recreate,
-    cmd_venv_remove,
-    cmd_venv_show,
-    cmd_run,
-    cmd_compile,
-    cmd_compile_all,
-    cmd_upload,
-    cmd_show,
-    cmd_compare,
-)
+from pyperformance.commands import COMMANDS
 
 
 def comma_separated(values):
@@ -103,9 +90,10 @@ def parse_args():
     cmds.append(cmd)
     filter_opts(cmd)
 
-    # list_groups
+    # list-groups
     cmd = subparsers.add_parser(
-        'list_groups', help='List benchmark groups of the running Python')
+        'list-groups', aliases=['list_groups'],
+        help='List benchmark groups of the running Python')
     cmds.append(cmd)
     cmd.add_argument("--manifest", help="benchmark manifest file to use")
 
@@ -128,9 +116,9 @@ def parse_args():
                           "to tune the system for benchmarks")
     cmds.append(cmd)
 
-    # compile_all
+    # compile-all
     cmd = subparsers.add_parser(
-        'compile_all',
+        'compile-all', aliases=['compile_all'],
         help='Compile and install CPython and run benchmarks '
              'on installed Python on all branches and revisions '
              'of CONFIG_FILE')
@@ -149,7 +137,10 @@ def parse_args():
 
     # venv
     venv_common = argparse.ArgumentParser(add_help=False)
-    venv_common.add_argument("--venv", help="Path to the virtual environment")
+    venv_common.add_argument("--venv", dest="_venv_ignored",
+                             action="store_true",
+                             help="(legacy; not used)")
+    venv_common.add_argument("venv", help="Path to the virtual environment")
     cmd = subparsers.add_parser('venv', parents=[venv_common],
                                 help='Actions on the virtual environment')
     cmd.set_defaults(venv_action='show')
@@ -176,15 +167,21 @@ def parse_args():
                          help="Python executable (default: use running Python)",
                          default=sys.executable)
 
+    #########################
+    # Now run the parser.
+
     options = parser.parse_args()
+    ns = vars(options)
 
-    if options.action == 'run' and options.debug_single_value:
-        options.fast = True
-
-    if not options.action:
-        # an action is mandatory
-        parser.print_help()
-        sys.exit(1)
+    cmd = ns.pop('action')
+    if not cmd:
+        parser.error('missing cmd')
+    elif cmd == 'venv':
+        ns.pop('_venv_ignored')
+        cmd = f'venv-{ns.pop("venv_action")}'
+    elif cmd == 'run':
+        if options.debug_single_value:
+            options.fast = True
 
     if hasattr(options, 'python'):
         # Replace "~" with the user home directory
@@ -198,12 +195,13 @@ def parse_args():
         options.python = abs_python
 
     if hasattr(options, 'benchmarks'):
+        allow_empty = ns.pop('allow_no_benchmarks')
         if options.benchmarks == '<NONE>':
-            if not options.allow_no_benchmarks:
+            if not allow_empty:
                 parser.error('--benchmarks cannot be empty')
             options.benchmarks = None
 
-    return options, parser
+    return cmd, ns, options, parser
 
 
 def _manifest_from_options(options):
@@ -245,58 +243,22 @@ def _select_benchmarks(raw, manifest):
     return selected
 
 
-def _main(options, parser):
-    if options.action == 'venv':
-        from . import _pythoninfo, _venv
-
-        if not options.venv:
-            info = _pythoninfo.get_info(options.python)
-            root = _venv.get_venv_root(python=info)
-        else:
-            root = options.venv
-            info = None
-
-        action = options.venv_action
-        if action == 'create':
-            benchmarks = _benchmarks_from_options(options)
-            cmd_venv_create(options, root, info, benchmarks)
-        elif action == 'recreate':
-            benchmarks = _benchmarks_from_options(options)
-            cmd_venv_recreate(options, root, info, benchmarks)
-        elif action == 'remove':
-            cmd_venv_remove(options, root)
-        elif action == 'show':
-            cmd_venv_show(options, root)
-        else:
-            print(f'ERROR: unsupported venv command action {action!r}')
-            parser.print_help()
-            sys.exit(1)
-    elif options.action == 'compile':
-        cmd_compile(options)
-        sys.exit()
-    elif options.action == 'compile_all':
-        cmd_compile_all(options)
-        sys.exit()
-    elif options.action == 'upload':
-        cmd_upload(options)
-        sys.exit()
-    elif options.action == 'show':
-        cmd_show(options)
-        sys.exit()
-    elif options.action == 'run':
-        benchmarks = _benchmarks_from_options(options)
-        cmd_run(options, benchmarks)
-    elif options.action == 'compare':
-        cmd_compare(options)
-    elif options.action == 'list':
-        benchmarks = _benchmarks_from_options(options)
-        cmd_list(options, benchmarks)
-    elif options.action == 'list_groups':
-        manifest = _manifest_from_options(options)
-        cmd_list_groups(manifest)
-    else:
+def _main(cmd, cmd_kwargs, options, parser):
+    try:
+        run_cmd = COMMANDS[cmd]
+    except KeyError:
+        print(f'ERROR: unsupported command {cmd!r}')
         parser.print_help()
         sys.exit(1)
+
+    if 'benchmarks' in cmd_kwargs:
+        benchmarks = _benchmarks_from_options(options)
+        run_cmd(options, benchmarks)
+    elif 'manifest' in cmd_kwargs:
+        manifest = _manifest_from_options(options)
+        run_cmd(options, manifest)
+    else:
+        run_cmd(options)
 
 
 def main():
@@ -308,9 +270,8 @@ def main():
                 print('(consider using the dev.py script)')
             sys.exit(1)
 
-        options, parser = parse_args()
-
-        _main(options, parser)
+        cmd, cmd_kwargs, options, parser = parse_args()
+        _main(cmd, cmd_kwargs, options, parser)
     except KeyboardInterrupt:
         print("Benchmark suite interrupted: exit!", flush=True)
         sys.exit(1)

@@ -11,7 +11,7 @@ def cmd_list(options, benchmarks):
     print("Total: %s benchmarks" % len(benchmarks))
 
 
-def cmd_list_groups(manifest):
+def cmd_list_groups(options, manifest):
     all_benchmarks = set(manifest.benchmarks)
 
     groups = sorted(manifest.groups - {'all', 'default'})
@@ -29,9 +29,15 @@ def cmd_list_groups(manifest):
         print()
 
 
-def cmd_venv_create(options, root, python, benchmarks):
+def cmd_venv_create(options, benchmarks):
     from . import _pythoninfo, _venv
     from .venv import Requirements, VenvForBenchmarks
+
+    python = None
+    root = options.venv
+    if not root:
+        python = _pythoninfo.get_info(options.python)
+        root = _venv.get_venv_root(python=python)
 
     if _venv.venv_exists(root):
         sys.exit(f'ERROR: the virtual environment already exists at {root}')
@@ -51,9 +57,15 @@ def cmd_venv_create(options, root, python, benchmarks):
     print("The virtual environment %s has been created" % root)
 
 
-def cmd_venv_recreate(options, root, python, benchmarks):
+def cmd_venv_recreate(options, benchmarks):
     from . import _pythoninfo, _venv, _utils
     from .venv import Requirements, VenvForBenchmarks
+
+    python = None
+    root = options.venv
+    if not root:
+        python = _pythoninfo.get_info(options.python)
+        root = _venv.get_venv_root(python=python)
 
     requirements = Requirements.from_benchmarks(benchmarks)
     if _venv.venv_exists(root):
@@ -103,8 +115,14 @@ def cmd_venv_recreate(options, root, python, benchmarks):
         print("The virtual environment %s has been created" % root)
 
 
-def cmd_venv_remove(options, root):
-    from . import _utils
+def cmd_venv_remove(options):
+    from . import _utils, _pythoninfo, _venv
+
+    root = options.venv
+    if not root:
+        info = _pythoninfo.get_info(options.python)
+        root = _venv.get_venv_root(python=info)
+
 
     if _utils.safe_rmtree(root):
         print("The virtual environment %s has been removed" % root)
@@ -112,8 +130,13 @@ def cmd_venv_remove(options, root):
         print("The virtual environment %s does not exist" % root)
 
 
-def cmd_venv_show(options, root):
-    from . import _venv
+def cmd_venv_show(options):
+    from . import _venv, _pythoninfo
+
+    root = options.venv
+    if not root:
+        info = _pythoninfo.get_info(options.python)
+        root = _venv.get_venv_root(python=info)
 
     exists = _venv.venv_exists(root)
 
@@ -235,3 +258,19 @@ def cmd_compare(options):
 
     if options.csv:
         write_csv(results, options.csv)
+
+
+COMMANDS = {
+    'list': cmd_list,
+    'list-groups': cmd_list_groups,
+    'venv-create': cmd_venv_create,
+    'venv-recreate': cmd_venv_recreate,
+    'venv-remove': cmd_venv_remove,
+    'venv-show': cmd_venv_show,
+    'run': cmd_run,
+    'compile': cmd_compile,
+    'compile-all': cmd_compile_all,
+    'upload': cmd_upload,
+    'show': cmd_show,
+    'compare': cmd_compare,
+}
