@@ -47,6 +47,7 @@ def _benchmarks_from_options(options):
 
         def _parse_selections(self, manifest):
             selections = super()._parse_selections(manifest)
+            selections = list(selections)
             _legacy_benchmarks_check(selections, manifest)
             return selections
 
