@@ -4,7 +4,6 @@ __all__ = [
     'check_name',
     'parse_name_pattern',
     'parse_tag_pattern',
-    'parse_selections',
     'iter_clean_lines',
     'flatten_strings',
     # classes
