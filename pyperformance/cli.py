@@ -43,7 +43,7 @@ def _legacy_benchmarks_check(selections, manifest):
 def _benchmarks_from_options(options):
     from pyperformance._benchmark_selections import RequestedBenchmarks
 
-    class Benchmarks(RequestedBenchmarks):
+    class SelectedBenchmarks(RequestedBenchmarks):
 
         def _parse_selections(self, manifest):
             selections = super()._parse_selections(manifest)
@@ -53,7 +53,7 @@ def _benchmarks_from_options(options):
         def _on_selection_has_no_matches(self, selstr):
             logging.warning(f"no benchmark named {selstr!r}")
 
-    return Benchmarks(options.manifest, options.benchmarks)
+    return SelectedBenchmarks(options.manifest, options.benchmarks)
 
 
 #######################################
