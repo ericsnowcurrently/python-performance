@@ -175,7 +175,7 @@ def parse_args():
     venv_common.add_argument("--venv", dest="_venv_ignored",
                              action="store_true",
                              help="(legacy; not used)")
-    venv_common.add_argument("venv", help="Path to the virtual environment")
+    venv_common.add_argument("venv", nargs="?", help="Path to the virtual environment")
     cmd = subparsers.add_parser('venv', parents=[venv_common],
                                 help='Actions on the virtual environment')
     cmd.set_defaults(venv_action='show')
@@ -213,7 +213,8 @@ def parse_args():
         parser.error('missing cmd')
     elif cmd == 'venv':
         ns.pop('_venv_ignored')
-        cmd = f'venv-{ns.pop("venv_action")}'
+        venv_action = ns.pop('venv_action')
+        cmd = f'venv-{venv_action}'
     elif cmd == 'run':
         if options.debug_single_value:
             options.fast = True
